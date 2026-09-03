@@ -40,6 +40,16 @@ const TERRITORIES = [
     subRegion: 'Evo Pest St. Louis',
     launched: false, // program hasn't sold its first plan yet -- no local ARV/penetration signal
   },
+  {
+    id: 'littlerock', dir: 'littlerock', label: 'Little Rock',
+    state: 'AR', officeLabel: 'Little Rock office',
+    title: 'Little Rock Termite Territory Map',
+    subRegion: 'Evo Pest Little Rock',
+    // No organized calling campaign yet (no funnel.json), but unlike St. Louis this office
+    // already has a handful of legacy termite plans (12, scattered) -- enough for a real
+    // local average ARV, so this is treated as "launched" for penetration/opportunity math.
+    launched: true,
+  },
 ];
 
 function g(r, k, d = 0) {
@@ -294,16 +304,19 @@ function buildTerritory(cfg, fallbackArv) {
   };
 }
 
-// Build the launched territory (Wichita) first so its live average termite ARV
-// is available as the cross-market fallback for any territory that hasn't sold
-// a plan yet (St. Louis, pre-launch).
-const launchedFirst = [...TERRITORIES].sort((a, b) => (b.launched - a.launched));
-const built = {};
-let referenceArv = 474; // last-resort default if no launched territory exists at all
-for (const cfg of launchedFirst) {
-  const result = buildTerritory(cfg, referenceArv);
-  built[cfg.id] = result;
-  if (cfg.launched) referenceArv = result.arv;
+// Wichita is the one mature, fully-launched market -- build it first so its live average
+// termite ARV is available as the cross-market fallback for any territory with zero local
+// termite plans of its own (a pre-launch office like St. Louis). A territory with *some*
+// local plans (e.g. Little Rock's handful of legacy ones) computes its own average instead;
+// this fallback only ever applies when a territory's local sub count is exactly zero.
+const referenceCfg = TERRITORIES.find(c => c.id === 'wichita') ?? TERRITORIES[0];
+const referenceResult = buildTerritory(referenceCfg, 474 /* last-resort default */);
+const referenceArv = referenceResult.arv;
+
+const built = { [referenceCfg.id]: referenceResult };
+for (const cfg of TERRITORIES) {
+  if (cfg.id === referenceCfg.id) continue;
+  built[cfg.id] = buildTerritory(cfg, referenceArv);
 }
 
 const territoriesData = {};
