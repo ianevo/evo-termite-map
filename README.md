@@ -4,7 +4,7 @@ Interactive zip-code map of preventative termite penetration, the calling funnel
 inspection progress across the Wichita metro. Built from RevHawk / FieldRoutes data for
 the Evo Pest Kansas office plus the team's zip tracking sheet.
 
-**Live map:** https://USERNAME.github.io/REPO/
+**Live map:** https://ianevo.github.io/evo-termite-map/
 
 `index.html` is fully self-contained — Leaflet, boundaries, and data are all inlined.
 It works opened directly from disk, with no server and no network.
