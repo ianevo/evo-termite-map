@@ -1,5 +1,14 @@
 # Handoff notes
 
+> **Update, September 3, 2026:** everything in "What's still open" below is done —
+> the repo is live at [github.com/ianevo/evo-termite-map](https://github.com/ianevo/evo-termite-map)
+> and served at https://ianevo.github.io/evo-termite-map/. The map now also covers a
+> second territory (St. Louis, pre-launch) behind a toggle, and the build pipeline was
+> ported from `pipeline/build.py` (Python) to `pipeline/build.mjs` (Node.js) — Python
+> wasn't available on the machine this work continued on. **README.md reflects the
+> current state; the rest of this file is the original Cowork handoff, kept as-is for
+> history.**
+
 This folder was built by Claude in Cowork (a cloud session) and dropped here so your
 local Claude Code can take it from here. Everything needed to run and refresh the map
 is included — see `README.md` for the full picture. Quick orientation:

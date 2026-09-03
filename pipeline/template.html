@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Evo Pest &middot; Wichita Termite Territory Map</title>
+<title>Evo Pest &middot; Termite Territory Map</title>
 <style>__LEAFLET_CSS__</style>
 <style>
 :root{
@@ -40,8 +40,10 @@ body{background:var(--surface-0);color:var(--text-primary);
  flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
 
 header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.htitle{display:flex;flex-direction:column;gap:8px}
 h1{font-size:20px;font-weight:640;letter-spacing:-.01em}
 .sub{color:var(--text-secondary);font-size:13px;margin-top:3px}
+.hbtns{display:flex;gap:8px;align-items:center}
 .themebtn{background:var(--surface-1);border:1px solid var(--border);color:var(--text-secondary);
  border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:520}
 .themebtn:hover{border-color:var(--border-strong);color:var(--text-primary)}
@@ -59,6 +61,9 @@ h1{font-size:20px;font-weight:640;letter-spacing:-.01em}
 .seg button:hover{color:var(--text-primary)}
 .seg button[aria-pressed="true"]{background:var(--surface-1);color:var(--text-primary);
  box-shadow:0 1px 2px rgba(0,0,0,.09)}
+.seg.territory{background:var(--surface-1);border-color:var(--border-strong);padding:4px}
+.seg.territory button{font-size:13px;font-weight:600;padding:8px 16px}
+.seg.territory button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .chk{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;
  background:var(--surface-1);border:1px solid var(--border);border-radius:9px;padding:7px 12px}
 .chk input{accent-color:#2a78d6;cursor:pointer;margin:0}
@@ -141,11 +146,14 @@ footer{margin-top:16px;font-size:11.5px;color:var(--text-muted);line-height:1.6}
 </style></head><body>
 <div class="wrap">
 <header>
-  <div>
-    <h1>Wichita Termite Territory Map</h1>
-    <div class="sub">Termite penetration, calling funnel &amp; inspection progress &middot; Evo Pest Kansas &middot; __NZIPS__ zips</div>
+  <div class="htitle">
+    <div class="seg territory" id="terrseg" role="group" aria-label="Territory"></div>
+    <h1 id="pageTitle">Termite Territory Map</h1>
+    <div class="sub" id="pageSub"></div>
   </div>
-  <button class="themebtn" id="themebtn" type="button">Dark mode</button>
+  <div class="hbtns">
+    <button class="themebtn" id="themebtn" type="button">Dark mode</button>
+  </div>
 </header>
 
 <div class="kpis" id="kpis"></div>
@@ -175,9 +183,8 @@ footer{margin-top:16px;font-size:11.5px;color:var(--text-muted);line-height:1.6}
 
 <script>__LEAFLET_JS__</script>
 <script>
-const GEO = __DATA__;
-const F = GEO.features;
-const P = F.map(f => f.properties);
+const TERRITORIES = __DATA__;
+const TERR_ORDER = __ORDER__;
 const TARGET = 30;
 
 const $ = id => document.getElementById(id);
@@ -226,27 +233,17 @@ function fillFor(d){
   return css(SQ[binIndex(b.get(d), b.cuts)]);
 }
 
-/* ---------- map ---------- */
+/* ---------- map (persists across territory switches) ---------- */
 const map = L.map('map', {zoomControl:true, scrollWheelZoom:true, attributionControl:false});
 let baseLayer = null;
 
-const layer = L.geoJSON(GEO, {
-  style: f => ({
-    fillColor: fillFor(f.properties), fillOpacity: 0.88,
-    color: css('--stroke'), weight: 1.2, opacity: 1
-  }),
-  onEachFeature: (f, lyr) => {
-    const d = f.properties;
-    lyr.bindTooltip(tipHTML(d), {className:'zt', sticky:true, direction:'top', offset:[0,-6]});
-    lyr.on({
-      mouseover: e => { e.target.setStyle({weight:3, color:css('--text-primary')}); e.target.bringToFront(); },
-      mouseout:  e => { e.target.setStyle({weight:1.2, color:css('--stroke')}); },
-      click:     () => select(d.zip)
-    });
-  }
-}).addTo(map);
-
-map.fitBounds(layer.getBounds(), {padding:[16,16]});
+/* ---------- mutable per-territory state ---------- */
+let TERR = null, GEO = null, F = null, P = null, T = null, byZip = null;
+let layer = null;
+const labelLayer = L.layerGroup().addTo(map);
+let marks = {};
+let selected = null;
+let listMode = 'opp';
 
 function tipHTML(d){
   const s = STATUS[d.status];
@@ -262,21 +259,7 @@ function tipHTML(d){
 }
 
 /* zip labels — only where the polygon is wide enough on screen to hold one,
-   so the dense Wichita core reveals its labels as you zoom in */
-const labelLayer = L.layerGroup().addTo(map);
-const marks = {};
-layer.eachLayer(l => {
-  const d = l.feature.properties;
-  marks[d.zip] = {
-    bounds: l.getBounds(),
-    marker: L.marker([d.lat, d.lng], {
-      interactive:false,
-      icon: L.divIcon({className:'ziplab', html:d.zip, iconSize:[38,12], iconAnchor:[19,6]})
-    })
-  };
-});
-
-let labelsOn = true;
+   so the dense zip clusters reveal their labels as you zoom in */
 function refreshLabels(){
   labelLayer.clearLayers();
   if (!labelsOn) return;
@@ -298,12 +281,7 @@ function refreshLabels(){
 }
 map.on('zoomend moveend', refreshLabels);
 
-let _resizeT = null;
-window.addEventListener('resize', () => {
-  clearTimeout(_resizeT);
-  _resizeT = setTimeout(() => { map.invalidateSize(); refreshLabels(); }, 120);
-});
-
+let labelsOn = true;
 $('labels').onchange = e => { labelsOn = e.target.checked; refreshLabels(); };
 $('base').onchange = e => {
   if (e.target.checked){
@@ -311,16 +289,22 @@ $('base').onchange = e => {
       'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
       {maxZoom:19, opacity:0.75}).addTo(map);
     baseLayer.bringToBack();
-    layer.setStyle({fillOpacity:0.62});
+    if (layer) layer.setStyle({fillOpacity:0.62});
   } else {
     if (baseLayer) map.removeLayer(baseLayer);
     baseLayer = null;
-    layer.setStyle({fillOpacity:0.88});
+    if (layer) layer.setStyle({fillOpacity:0.88});
   }
 };
 
+let _resizeT = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeT);
+  _resizeT = setTimeout(() => { map.invalidateSize(); refreshLabels(); }, 120);
+});
+
 function repaint(){
-  layer.setStyle(f => ({
+  if (layer) layer.setStyle(f => ({
     fillColor: fillFor(f.properties), fillOpacity: baseLayer ? 0.62 : 0.88,
     color: css('--stroke'), weight:1.2, opacity:1
   }));
@@ -344,35 +328,7 @@ function drawLegend(){
   $('legend').innerHTML = h;
 }
 
-/* ---------- KPI strip ---------- */
-const T = {
-  active: P.reduce((a,d)=>a+d.active_customers,0),
-  total:  P.reduce((a,d)=>a+d.total_customers,0),
-  term:   P.reduce((a,d)=>a+d.active_termite,0),
-  gap:    P.reduce((a,d)=>a+d.gap_to_target,0),
-  opp:    P.reduce((a,d)=>a+d.opportunity_arv,0),
-  leads:  P.reduce((a,d)=>a+d.leads,0),
-  called: P.reduce((a,d)=>a+d.called,0),
-  showed: P.reduce((a,d)=>a+d.showed_up,0),
-  left:   P.reduce((a,d)=>a+d.left_to_call,0),
-  insp:   P.reduce((a,d)=>a+d.cust_inspected,0)
-};
-T.pen = 100 * T.term / T.active;
-
-$('kpis').innerHTML = [
-  ['Active customers', num(T.active), num(T.total) + ' accounts all-time'],
-  ['Termite plans', num(T.term), 'active preventative coverage'],
-  ['Penetration', T.pen.toFixed(1) + '%', 'goal is 30%'],
-  ['Gap to 30%', num(T.gap), 'more plans needed'],
-  ['Opportunity', money(T.opp), 'ARV at 30% penetration'],
-  ['Left to call', num(T.left), 'of ' + num(T.leads) + ' leads']
-].map(([l,v,n]) => `<div class="kpi"><div class="lab">${l}</div><div class="val">${v}</div><div class="note">${n}</div></div>`).join('');
-
 /* ---------- sidebar ---------- */
-const byZip = Object.fromEntries(P.map(d => [d.zip, d]));
-let selected = null;
-let listMode = 'opp';
-
 const LISTS = {
   opp: {
     title:'Biggest opportunity',
@@ -393,6 +349,9 @@ const LISTS = {
 function overview(){
   const L = LISTS[listMode];
   const rows = L.rows();
+  const emptyHint = listMode === 'call'
+    ? 'No calls logged yet — the calling campaign for this territory hasn\'t started.'
+    : 'Nothing to rank yet.';
   $('side').innerHTML = `
     <div class="tabs">
       <button type="button" data-l="opp" aria-pressed="${listMode==='opp'}">Opportunity</button>
@@ -400,13 +359,13 @@ function overview(){
     </div>
     <h2 style="margin-top:14px">${L.title}</h2>
     <div class="hint" style="margin-top:6px">${L.hint}</div>
-    <ol class="rank">${rows.map((d,i)=>`
+    ${rows.length ? `<ol class="rank">${rows.map((d,i)=>`
       <li data-z="${d.zip}">
         <span class="n">${i+1}</span>
         <span class="b"><span class="a">${d.zip} · ${d.city}</span>
           <span class="s">${L.sub(d)}</span></span>
         <span class="v">${L.val(d)}<small>${L.small(d)}</small></span>
-      </li>`).join('')}</ol>`;
+      </li>`).join('')}</ol>` : `<div class="hint">${emptyHint}</div>`}`;
   $('side').querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
     listMode = b.dataset.l; overview();
   });
@@ -444,7 +403,7 @@ function detail(z){
 
   $('side').innerHTML = `
     <h2>Zip profile</h2>
-    <div class="zh"><span class="z">${d.zip}</span><span class="c">${d.city}, KS · ${d.county} Co.</span></div>
+    <div class="zh"><span class="z">${d.zip}</span><span class="c">${d.city}, ${TERR.state} · ${d.county} Co.</span></div>
     <div class="pill"><span class="d" style="background:${css(s.v)}"></span>${s.label}</div>
 
     <div class="bar">
@@ -494,6 +453,101 @@ function select(z){
   });
 }
 
+/* ---------- territory switching ---------- */
+function loadTerritory(id){
+  TERR = TERRITORIES[id];
+  GEO = TERR.geo;
+  F = GEO.features;
+  P = F.map(f => f.properties);
+  byZip = Object.fromEntries(P.map(d => [d.zip, d]));
+  selected = null;
+
+  if (layer) map.removeLayer(layer);
+  layer = L.geoJSON(GEO, {
+    style: f => ({
+      fillColor: fillFor(f.properties), fillOpacity: baseLayer ? 0.62 : 0.88,
+      color: css('--stroke'), weight: 1.2, opacity: 1
+    }),
+    onEachFeature: (f, lyr) => {
+      const d = f.properties;
+      lyr.bindTooltip(tipHTML(d), {className:'zt', sticky:true, direction:'top', offset:[0,-6]});
+      lyr.on({
+        mouseover: e => { e.target.setStyle({weight:3, color:css('--text-primary')}); e.target.bringToFront(); },
+        mouseout:  e => { e.target.setStyle({weight:1.2, color:css('--stroke')}); },
+        click:     () => select(d.zip)
+      });
+    }
+  }).addTo(map);
+  map.fitBounds(layer.getBounds(), {padding:[16,16]});
+
+  marks = {};
+  layer.eachLayer(l => {
+    const d = l.feature.properties;
+    marks[d.zip] = {
+      bounds: l.getBounds(),
+      marker: L.marker([d.lat, d.lng], {
+        interactive:false,
+        icon: L.divIcon({className:'ziplab', html:d.zip, iconSize:[38,12], iconAnchor:[19,6]})
+      })
+    };
+  });
+
+  T = {
+    active: P.reduce((a,d)=>a+d.active_customers,0),
+    total:  P.reduce((a,d)=>a+d.total_customers,0),
+    term:   P.reduce((a,d)=>a+d.active_termite,0),
+    gap:    P.reduce((a,d)=>a+d.gap_to_target,0),
+    opp:    P.reduce((a,d)=>a+d.opportunity_arv,0),
+    leads:  P.reduce((a,d)=>a+d.leads,0),
+    called: P.reduce((a,d)=>a+d.called,0),
+    showed: P.reduce((a,d)=>a+d.showed_up,0),
+    left:   P.reduce((a,d)=>a+d.left_to_call,0),
+    insp:   P.reduce((a,d)=>a+d.cust_inspected,0)
+  };
+  T.pen = T.active ? 100 * T.term / T.active : 0;
+
+  $('pageTitle').textContent = TERR.title;
+  $('pageSub').textContent = TERR.sub;
+
+  $('kpis').innerHTML = [
+    ['Active customers', num(T.active), num(T.total) + ' accounts all-time'],
+    ['Termite plans', num(T.term), TERR.launched ? 'active preventative coverage' : 'program not yet launched'],
+    ['Penetration', T.pen.toFixed(1) + '%', 'goal is 30%'],
+    ['Gap to 30%', num(T.gap), 'more plans needed'],
+    ['Opportunity', money(T.opp), 'ARV at 30% penetration'],
+    T.leads
+      ? ['Left to call', num(T.left), 'of ' + num(T.leads) + ' leads']
+      : ['Left to call', '—', 'calling campaign not started']
+  ].map(([l,v,n]) => `<div class="kpi"><div class="lab">${l}</div><div class="val">${v}</div><div class="note">${n}</div></div>`).join('');
+
+  $('foot').innerHTML = `Sources: RevHawk / FieldRoutes (${TERR.officeLabel}) for customers, plans and inspections; `
+    + (TERR.hasFunnel ? `the team's zip tracking sheet for the calling funnel. ` : ``)
+    + `Built ${TERR.stamp}. `
+    + `Penetration = active termite plans ÷ active customers. `
+    + `Campaign status comes from calling progress: Complete = 80%+ of leads called, `
+    + `In progress = 15%+, Queued = leads loaded but calling not started. `
+    + `Inspection counts cover the current calendar year only. `
+    + `Opportunity ARV values each additional plan at $${TERR.arv}` + (TERR.launched ? `, the average annual recurring value of live termite plans in this market. ` : `, this office's most comparable live market average (the program hasn't launched here yet). `)
+    + `Boundaries: US Census ZCTA.`;
+
+  repaint();
+  overview();
+  refreshLabels();
+}
+
+function buildTerritorySwitcher(){
+  $('terrseg').innerHTML = TERR_ORDER.map((id,i) =>
+    `<button type="button" data-t="${id}" aria-pressed="${i===0}">${TERRITORIES[id].label}</button>`).join('');
+  $('terrseg').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    [...$('terrseg').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    view = 'status';
+    [...$('seg').children].forEach(x => x.setAttribute('aria-pressed', x.dataset.v === 'status'));
+    listMode = 'opp';
+    loadTerritory(b.dataset.t);
+  };
+}
+
 /* ---------- controls ---------- */
 $('seg').onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -511,17 +565,8 @@ function applyTheme(dark){
 }
 let dark = matchMedia('(prefers-color-scheme: dark)').matches;
 $('themebtn').onclick = () => { dark = !dark; applyTheme(dark); };
+
+buildTerritorySwitcher();
+loadTerritory(TERR_ORDER[0]);
 applyTheme(dark);
-
-$('foot').innerHTML = `Sources: RevHawk / FieldRoutes (Kansas office) for customers, plans and inspections; `
-  + `the team's zip tracking sheet for the calling funnel. Built __STAMP__. `
-  + `Penetration = active termite plans ÷ active customers. `
-  + `Campaign status comes from calling progress: Complete = 80%+ of leads called, `
-  + `In progress = 15%+, Queued = leads loaded but calling not started. `
-  + `Inspection counts cover the current calendar year only. `
-  + `Opportunity ARV values each additional plan at $__ARV__, the average annual recurring value of live termite plans in this market. `
-  + `Boundaries: US Census ZCTA.`;
-
-overview();
-refreshLabels();
 </script></body></html>
