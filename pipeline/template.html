@@ -165,6 +165,7 @@ footer{margin-top:16px;font-size:11.5px;color:var(--text-muted);line-height:1.6}
     <button type="button" data-v="pen" aria-pressed="false">Termite penetration</button>
     <button type="button" data-v="opp" aria-pressed="false">Opportunity ($ ARV)</button>
     <button type="button" data-v="cust" aria-pressed="false">Active customers</button>
+    <button type="button" data-v="route" aria-pressed="false">Call order</button>
   </div>
   <label class="chk"><input type="checkbox" id="labels" checked> Zip labels</label>
   <label class="chk"><input type="checkbox" id="base"> Street basemap</label>
@@ -228,6 +229,11 @@ let view = 'status';
 
 function fillFor(d){
   if (view === 'status') return css(STATUS[d.status].v);
+  if (view === 'route') {
+    const n = P.length;
+    const idx = Math.max(0, Math.min(SQ.length - 1, Math.floor((d.route_rank - 1) / n * SQ.length)));
+    return css(SQ[idx]);
+  }
   const b = BINS[view];
   if (b.gray && b.gray(d)) return css('--sq0');
   return css(SQ[binIndex(b.get(d), b.cuts)]);
@@ -240,6 +246,7 @@ let baseLayer = null;
 /* ---------- mutable per-territory state ---------- */
 let TERR = null, GEO = null, F = null, P = null, T = null, byZip = null;
 let layer = null;
+let routeLineLayer = null;
 const labelLayer = L.layerGroup().addTo(map);
 let marks = {};
 let selected = null;
@@ -303,11 +310,20 @@ window.addEventListener('resize', () => {
   _resizeT = setTimeout(() => { map.invalidateSize(); refreshLabels(); }, 120);
 });
 
+function drawRouteLine(){
+  if (routeLineLayer) { map.removeLayer(routeLineLayer); routeLineLayer = null; }
+  if (view !== 'route' || !P) return;
+  const ordered = [...P].sort((a,b) => a.route_rank - b.route_rank);
+  routeLineLayer = L.polyline(ordered.map(d => [d.lat, d.lng]),
+    {color: css('--accent'), weight: 2.5, opacity: 0.85, dashArray: '6 5'}).addTo(map);
+}
+
 function repaint(){
   if (layer) layer.setStyle(f => ({
     fillColor: fillFor(f.properties), fillOpacity: baseLayer ? 0.62 : 0.88,
     color: css('--stroke'), weight:1.2, opacity:1
   }));
+  drawRouteLine();
   drawLegend();
 }
 
@@ -319,6 +335,11 @@ function drawLegend(){
       ['complete','in_progress','queued','paused','not_in_campaign'].map(k =>
         `<div class="row"><span class="sw" style="background:${css(STATUS[k].v)}"></span>${STATUS[k].label}</div>`
       ).join('');
+  } else if (view === 'route'){
+    h = `<div class="h">Call order</div>` +
+      `<div class="row"><span class="sw" style="background:${css(SQ[0])}"></span>Start</div>` +
+      `<div class="row"><span class="sw" style="background:${css(SQ[SQ.length-1])}"></span>End</div>` +
+      `<div class="row" style="margin-top:8px">${TERR.routeMiles} mi total, ${P.length} stops</div>`;
   } else {
     const b = BINS[view];
     const swatches = b.gray ? ['--sq0'].concat(SQ) : SQ;
@@ -343,12 +364,20 @@ const LISTS = {
     rows:()=>P.filter(d=>d.left_to_call>0).sort((a,b)=>b.left_to_call-a.left_to_call),
     sub:d=>`${d.leads} leads · ${pct(d.call_rate_pct)} called · ${d.showed_up} shown`,
     val:d=>num(d.left_to_call), small:d=>'to call'
+  },
+  route: {
+    title:'Suggested call order',
+    hint:()=>`Shortest total drive across all ${P.length} zips — ${TERR.routeMiles} mi, starting where the opportunity is biggest. Not filtered by campaign status; cross-check that against the pill next to each zip. Click a zip — on the map or here — for its full profile.`,
+    rows:()=>[...P].sort((a,b)=>a.route_rank-b.route_rank),
+    sub:d=>`${STATUS[d.status].label} · ${d.active_customers} active`,
+    val:d=>`${d.route_cum_mi} mi`, small:d=>`+${d.route_leg_mi} mi`
   }
 };
 
 function overview(){
   const L = LISTS[listMode];
   const rows = L.rows();
+  const hint = typeof L.hint === 'function' ? L.hint() : L.hint;
   const emptyHint = listMode === 'call'
     ? 'No calls logged yet — the calling campaign for this territory hasn\'t started.'
     : 'Nothing to rank yet.';
@@ -356,9 +385,10 @@ function overview(){
     <div class="tabs">
       <button type="button" data-l="opp" aria-pressed="${listMode==='opp'}">Opportunity</button>
       <button type="button" data-l="call" aria-pressed="${listMode==='call'}">Call queue</button>
+      <button type="button" data-l="route" aria-pressed="${listMode==='route'}">Call order</button>
     </div>
     <h2 style="margin-top:14px">${L.title}</h2>
-    <div class="hint" style="margin-top:6px">${L.hint}</div>
+    <div class="hint" style="margin-top:6px">${hint}</div>
     ${rows.length ? `<ol class="rank">${rows.map((d,i)=>`
       <li data-z="${d.zip}">
         <span class="n">${i+1}</span>
@@ -462,6 +492,7 @@ function loadTerritory(id){
   byZip = Object.fromEntries(P.map(d => [d.zip, d]));
   selected = null;
 
+  if (routeLineLayer) { map.removeLayer(routeLineLayer); routeLineLayer = null; }
   if (layer) map.removeLayer(layer);
   layer = L.geoJSON(GEO, {
     style: f => ({

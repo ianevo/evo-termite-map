@@ -81,6 +81,97 @@ function stamp() {
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
+// ---------------------------------------------------------- route ordering
+// "Most efficient possible routing" here means: shortest total straight-line (as-the-crow-flies)
+// path visiting every zip's centroid exactly once, starting at the zip with the biggest opportunity.
+// Nearest-neighbor gives a decent starting tour; full 2-opt cleans up its crossings. At ~40 stops
+// this is exact enough in practice and cheap enough to run to convergence on every build.
+function haversineMiles(a, b) {
+  const R = 3958.8;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(h));
+}
+
+function pathMiles(order, nodes) {
+  let total = 0;
+  for (let i = 0; i < order.length - 1; i++) total += haversineMiles(nodes[order[i]], nodes[order[i + 1]]);
+  return total;
+}
+
+function nearestNeighborOrder(nodes, startIdx) {
+  const n = nodes.length;
+  const visited = new Array(n).fill(false);
+  const order = [startIdx];
+  visited[startIdx] = true;
+  for (let k = 1; k < n; k++) {
+    const last = nodes[order[order.length - 1]];
+    let best = -1, bestD = Infinity;
+    for (let i = 0; i < n; i++) {
+      if (visited[i]) continue;
+      const d = haversineMiles(last, nodes[i]);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    order.push(best);
+    visited[best] = true;
+  }
+  return order;
+}
+
+function twoOptImprove(order, nodes) {
+  let best = order.slice();
+  let bestLen = pathMiles(best, nodes);
+  let improved = true;
+  while (improved) {
+    improved = false;
+    // i starts at 1, not 0: position 0 (the chosen start zip) stays fixed. The route's
+    // other endpoint is free to move -- we only care that it starts where the payoff is biggest.
+    for (let i = 1; i < best.length - 1; i++) {
+      for (let j = i + 1; j < best.length; j++) {
+        const candidate = best.slice(0, i).concat(best.slice(i, j + 1).reverse(), best.slice(j + 1));
+        const candidateLen = pathMiles(candidate, nodes);
+        if (candidateLen < bestLen - 1e-6) {
+          best = candidate;
+          bestLen = candidateLen;
+          improved = true;
+        }
+      }
+    }
+  }
+  return { order: best, miles: bestLen };
+}
+
+// Attaches route_rank / route_leg_mi / route_cum_mi to each feature's properties in place.
+// Returns the total route length in miles.
+function computeRoute(feats) {
+  const nodes = feats.map(f => ({ lat: f.properties.lat, lng: f.properties.lng }));
+  if (nodes.length < 2) {
+    if (feats.length) Object.assign(feats[0].properties, { route_rank: 1, route_leg_mi: 0, route_cum_mi: 0 });
+    return 0;
+  }
+  // Start where the payoff is biggest, then follow the shortest path through the rest.
+  let startIdx = 0;
+  for (let i = 1; i < feats.length; i++) {
+    if (feats[i].properties.opportunity_arv > feats[startIdx].properties.opportunity_arv) startIdx = i;
+  }
+  const nn = nearestNeighborOrder(nodes, startIdx);
+  const { order, miles } = twoOptImprove(nn, nodes);
+
+  let cum = 0;
+  order.forEach((nodeIdx, i) => {
+    const leg = i === 0 ? 0 : haversineMiles(nodes[order[i - 1]], nodes[nodeIdx]);
+    cum += leg;
+    Object.assign(feats[nodeIdx].properties, {
+      route_rank: i + 1,
+      route_leg_mi: Math.round(leg * 10) / 10,
+      route_cum_mi: Math.round(cum * 10) / 10,
+    });
+  });
+  return Math.round(miles * 10) / 10;
+}
+
 function buildTerritory(cfg, fallbackArv) {
   let rows = loadJSON(p(cfg.dir, 'rows.json'), null);
   if (rows == null) throw new Error(`${cfg.dir}/rows.json not found — run query.sql through RevHawk and save the rows there first.`);
@@ -172,6 +263,8 @@ function buildTerritory(cfg, fallbackArv) {
   if (orphanFunnel.length) console.log(`WARNING [${cfg.id}]: funnel data for [${orphanFunnel}] has no matching zip on the map.`);
   if (!feats.length) throw new Error(`[${cfg.id}] No zips matched a boundary — nothing to render.`);
 
+  const routeMiles = computeRoute(feats);
+
   const act = Object.values(recs).reduce((a, r) => a + r.active_customers, 0);
   const trm = Object.values(recs).reduce((a, r) => a + r.active_termite, 0);
   const gap = Object.values(recs).reduce((a, r) => a + r.gap_to_target, 0);
@@ -180,6 +273,7 @@ function buildTerritory(cfg, fallbackArv) {
   const shw = Object.values(recs).reduce((a, r) => a + r.showed_up, 0);
   console.log(`[${cfg.id}] ${feats.length} zips — active ${act.toLocaleString()} | termite ${trm} | ` +
     `penetration ${act ? (100 * trm / act).toFixed(1) : '0.0'}% | gap to 30% ${gap} plans ($${(gap * avgArv).toLocaleString()}) | avg plan ARV $${avgArv}`);
+  console.log(`[${cfg.id}] optimized call route: ${routeMiles} mi across ${feats.length} stops, starting ${feats.find(f => f.properties.route_rank === 1).properties.zip}`);
   if (hasFunnel) {
     console.log(`[${cfg.id}] funnel: ${lds} leads | ${cld} called (${lds ? Math.round(100 * cld / lds) : 0}%) | ${shw} showed up | ${lds - cld} left to call`);
   }
@@ -194,6 +288,7 @@ function buildTerritory(cfg, fallbackArv) {
     launched: cfg.launched,
     hasFunnel,
     arv: avgArv,
+    routeMiles,
     stamp: stamp(),
     geo: { type: 'FeatureCollection', features: feats },
   };

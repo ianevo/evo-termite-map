@@ -24,7 +24,7 @@ territories:
   first instead of a scattered route. Its "Opportunity" ranking is effectively an active-
   customer-density ranking until real termite/funnel data exists.
 
-Five map views, same for both territories:
+Six map views, same for both territories:
 
 | View | Encodes |
 |---|---|
@@ -33,6 +33,16 @@ Five map views, same for both territories:
 | Termite penetration | Active termite plans ÷ active customers |
 | Opportunity ($ ARV) | Annual value of the plans still needed to hit 30% |
 | Active customers | Book size per zip |
+| Call order | Suggested order to work every zip, most efficient routing |
+
+**Call order** answers "which zip do we drive to next": it's the shortest total path
+(nearest-neighbor + 2-opt over straight-line distance between zip centroids) visiting
+every zip in the territory exactly once, starting at the biggest-opportunity zip. Selecting
+it draws the route as a dashed line on the map and shades zips from light (first stop) to
+dark (last). The sidebar's **Call order** tab lists the same sequence with the
+running mileage. It ignores campaign status by design — it's a driving/dialing sequence,
+not a priority filter — so cross-check the status pill next to each zip before skipping one
+that's already complete.
 
 Click any zip for a full profile: penetration against the 30% goal, the complete calling
 funnel (if any), opportunity, customer base, and inspection history. The sidebar toggles
