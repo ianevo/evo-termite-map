@@ -746,6 +746,9 @@ h1{font-size:20px;font-weight:640;letter-spacing:-.01em}
 .ziplab{background:none;border:0;box-shadow:none;font-size:10.5px;font-weight:640;color:var(--text-primary);
  text-shadow:0 0 3px var(--surface-1),0 0 3px var(--surface-1),0 0 5px var(--surface-1);
  pointer-events:none;white-space:nowrap}
+.routenum{background:var(--warn);color:#fff;border:2px solid var(--stroke);border-radius:50%;
+ width:22px;height:22px;line-height:18px;text-align:center;font-size:11px;font-weight:700;
+ box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none}
 
 .legend{position:absolute;left:12px;bottom:12px;background:var(--surface-1);border:1px solid var(--border);
  border-radius:11px;padding:11px 13px;z-index:800;box-shadow:0 4px 14px rgba(0,0,0,.1);max-width:230px}
@@ -931,11 +934,13 @@ function tipHTML(d){
   return h;
 }
 
-/* zip labels — only where the polygon is wide enough on screen to hold one,
-   so the dense zip clusters reveal their labels as you zoom in */
+/* zip labels — only where the polygon is wide enough on screen to hold one, so the dense
+   zip clusters reveal their labels as you zoom in. In the "Call order" view, the label
+   swaps for a numbered marker showing each zip's position in the suggested route. */
 function refreshLabels(){
   labelLayer.clearLayers();
-  if (!labelsOn) return;
+  const useNum = view === 'route';
+  if (!labelsOn && !useNum) return;
   const shown = [];
   Object.values(marks)
     .map(m => {
@@ -945,11 +950,13 @@ function refreshLabels(){
     })
     .sort((a,b) => (b.w * b.h) - (a.w * a.h))
     .forEach(({m, w, h}) => {
-      if (w < 46 || h < 20) return;
-      const p = map.latLngToContainerPoint(m.marker.getLatLng());
+      const marker = useNum ? m.numMarker : m.marker;
+      const minW = useNum ? 24 : 46, minH = useNum ? 24 : 20;
+      if (w < minW || h < minH) return;
+      const p = map.latLngToContainerPoint(marker.getLatLng());
       if (shown.some(q => Math.abs(q.x - p.x) < 44 && Math.abs(q.y - p.y) < 15)) return;
       shown.push(p);
-      labelLayer.addLayer(m.marker);
+      labelLayer.addLayer(marker);
     });
 }
 map.on('zoomend moveend', refreshLabels);
@@ -1185,6 +1192,10 @@ function loadTerritory(id){
       marker: L.marker([d.lat, d.lng], {
         interactive:false,
         icon: L.divIcon({className:'ziplab', html:d.zip, iconSize:[38,12], iconAnchor:[19,6]})
+      }),
+      numMarker: L.marker([d.lat, d.lng], {
+        interactive:false,
+        icon: L.divIcon({className:'routenum', html:String(d.route_rank), iconSize:[22,22], iconAnchor:[11,11]})
       })
     };
   });
@@ -1251,6 +1262,7 @@ $('seg').onclick = e => {
   view = b.dataset.v;
   [...$('seg').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   repaint();
+  refreshLabels();
   if (selected) select(selected);
 };
 
