@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evo Pest &middot; Wichita Termite Territory Map</title>
+<style>__LEAFLET_CSS__</style>
+<style>
+:root{
+  --surface-0:#f4f3f0; --surface-1:#fcfcfb; --surface-2:#eceae5;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#78766f;
+  --border:#d9d7d1; --border-strong:#b8b5ad;
+  --st-none:#e4e2dd; --st-queued:#86b6ef; --st-prog:#3987e5; --st-done:#184f95; --st-pause:#c9832e;
+  --sq0:#e4e2dd; --sq1:#cde2fb; --sq2:#9ec5f4; --sq3:#6da7ec; --sq4:#3987e5; --sq5:#256abf; --sq6:#104281;
+  --stroke:#fcfcfb; --accent:#2a78d6; --warn:#d03b3b;
+}
+:root[data-theme="dark"]{
+  --surface-0:#111110; --surface-1:#1a1a19; --surface-2:#242422;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8e8d84;
+  --border:#34342f; --border-strong:#4a4a44;
+  --st-none:#2c2c28; --st-queued:#184f95; --st-prog:#2a78d6; --st-done:#9ec5f4; --st-pause:#e0a352;
+  --sq0:#2c2c28; --sq1:#184f95; --sq2:#1c5cab; --sq3:#256abf; --sq4:#3987e5; --sq5:#6da7ec; --sq6:#9ec5f4;
+  --stroke:#1a1a19; --accent:#6da7ec; --warn:#e66767;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --surface-0:#111110; --surface-1:#1a1a19; --surface-2:#242422;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8e8d84;
+    --border:#34342f; --border-strong:#4a4a44;
+    --st-none:#2c2c28; --st-queued:#184f95; --st-prog:#2a78d6; --st-done:#9ec5f4; --st-pause:#e0a352;
+    --sq0:#2c2c28; --sq1:#184f95; --sq2:#1c5cab; --sq3:#256abf; --sq4:#3987e5; --sq5:#6da7ec; --sq6:#9ec5f4;
+    --stroke:#1a1a19; --accent:#6da7ec; --warn:#e66767;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--surface-0);color:var(--text-primary);
+ font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+ -webkit-font-smoothing:antialiased;
+ min-height:100vh;display:flex;flex-direction:column}
+.wrap{width:100%;margin:0;padding:20px 24px 24px;box-sizing:border-box;
+ flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:20px;font-weight:640;letter-spacing:-.01em}
+.sub{color:var(--text-secondary);font-size:13px;margin-top:3px}
+.themebtn{background:var(--surface-1);border:1px solid var(--border);color:var(--text-secondary);
+ border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:520}
+.themebtn:hover{border-color:var(--border-strong);color:var(--text-primary)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(146px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:13px 15px}
+.kpi .lab{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);font-weight:600}
+.kpi .val{font-size:25px;font-weight:660;letter-spacing:-.02em;margin-top:5px;font-variant-numeric:tabular-nums}
+.kpi .note{font-size:11.5px;color:var(--text-secondary);margin-top:3px}
+
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{background:none;border:0;color:var(--text-secondary);font:inherit;font-size:12.5px;font-weight:540;
+ padding:7px 13px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.seg button:hover{color:var(--text-primary)}
+.seg button[aria-pressed="true"]{background:var(--surface-1);color:var(--text-primary);
+ box-shadow:0 1px 2px rgba(0,0,0,.09)}
+.chk{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;
+ background:var(--surface-1);border:1px solid var(--border);border-radius:9px;padding:7px 12px}
+.chk input{accent-color:#2a78d6;cursor:pointer;margin:0}
+
+.grid{display:flex;gap:14px;flex:1 1 auto;min-height:0}
+@media (max-width:940px){.grid{flex-direction:column}}
+
+.mapcard{position:relative;background:var(--surface-1);border:1px solid var(--border);
+ border-radius:14px;overflow:hidden;flex:1 1 auto;min-width:0;display:flex;flex-direction:column;min-height:420px}
+#map{flex:1 1 auto;min-height:0;background:var(--surface-2)}
+@media (max-width:940px){.mapcard{flex:none}#map{height:60vh;min-height:360px}}
+.leaflet-container{background:var(--surface-2);font-family:inherit}
+.leaflet-tooltip.zt{background:var(--surface-1);color:var(--text-primary);border:1px solid var(--border-strong);
+ border-radius:9px;box-shadow:0 6px 20px rgba(0,0,0,.16);padding:9px 11px;font-size:12.5px;white-space:nowrap}
+.leaflet-tooltip.zt::before{display:none}
+.zt .t{font-weight:650;margin-bottom:4px}
+.zt .r{color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.zt .r b{color:var(--text-primary);font-weight:600}
+.ziplab{background:none;border:0;box-shadow:none;font-size:10.5px;font-weight:640;color:var(--text-primary);
+ text-shadow:0 0 3px var(--surface-1),0 0 3px var(--surface-1),0 0 5px var(--surface-1);
+ pointer-events:none;white-space:nowrap}
+
+.legend{position:absolute;left:12px;bottom:12px;background:var(--surface-1);border:1px solid var(--border);
+ border-radius:11px;padding:11px 13px;z-index:800;box-shadow:0 4px 14px rgba(0,0,0,.1);max-width:230px}
+.legend .h{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);
+ font-weight:600;margin-bottom:8px}
+.legend .row{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:12px;color:var(--text-secondary)}
+.legend .sw{width:15px;height:15px;border-radius:4px;border:1px solid var(--border-strong);flex:none}
+
+.side{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:16px;
+ flex:0 0 336px;width:336px;overflow-y:auto;min-height:0}
+@media (max-width:940px){.side{flex:none;width:auto;max-height:50vh}}
+.side h2{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);font-weight:600}
+.zh{display:flex;align-items:baseline;gap:9px;margin-top:9px;flex-wrap:wrap}
+.zh .z{font-size:27px;font-weight:680;letter-spacing:-.02em}
+.zh .c{font-size:13.5px;color:var(--text-secondary)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px;
+ font-size:11.5px;font-weight:600;border:1px solid var(--border-strong);margin-top:9px;
+ background:var(--surface-2);color:var(--text-primary)}
+.pill .d{width:9px;height:9px;border-radius:50%;flex:none}
+
+.bar{margin-top:15px}
+.bar .lab{display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);margin-bottom:6px}
+.bar .lab b{color:var(--text-primary);font-variant-numeric:tabular-nums}
+.track{height:9px;background:var(--surface-2);border-radius:5px;position:relative;overflow:hidden}
+.fill{height:100%;background:#3987e5;border-radius:5px;min-width:2px}
+.tgt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text-muted)}
+.tgtlab{font-size:11px;color:var(--text-muted);margin-top:5px}
+
+table.kv{width:100%;border-collapse:collapse;margin-top:13px}
+table.kv td{padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+table.kv tr:last-child td{border-bottom:0}
+table.kv td:first-child{color:var(--text-secondary)}
+table.kv td:last-child{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.grp{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);
+ font-weight:600;margin-top:17px;padding-bottom:3px;border-bottom:1px solid var(--border)}
+.flag{margin-top:11px;padding:9px 11px;border-radius:9px;background:var(--surface-2);
+ border:1px solid var(--border-strong);font-size:12px;color:var(--text-secondary);line-height:1.5}
+.flag b{color:var(--text-primary)}
+
+.rank{list-style:none;margin-top:10px}
+.rank li{display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:9px;cursor:pointer;
+ border:1px solid transparent}
+.rank li:hover{background:var(--surface-2);border-color:var(--border)}
+.rank .n{width:19px;text-align:right;color:var(--text-muted);font-size:11.5px;font-variant-numeric:tabular-nums;flex:none}
+.rank .b{flex:1;min-width:0}
+.rank .b .a{display:block;font-size:13px;font-weight:600}
+.rank .b .s{display:block;font-size:11.5px;color:var(--text-secondary);margin-top:1px}
+.rank .v{text-align:right;font-size:12.5px;font-weight:640;font-variant-numeric:tabular-nums;flex:none}
+.rank .v small{display:block;font-weight:450;color:var(--text-muted);font-size:11px}
+.hint{font-size:12px;color:var(--text-muted);margin-top:12px;line-height:1.55}
+.back{background:none;border:0;color:var(--accent);font:inherit;font-size:12.5px;font-weight:560;
+ cursor:pointer;padding:0;margin-top:14px}
+.back:hover{text-decoration:underline}
+.tabs{display:flex;gap:3px;margin-top:2px}
+.tabs button{flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--text-secondary);
+ font:inherit;font-size:11.5px;font-weight:560;padding:6px 4px;border-radius:8px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--surface-1);color:var(--text-primary);border-color:var(--border-strong)}
+footer{margin-top:16px;font-size:11.5px;color:var(--text-muted);line-height:1.6}
+</style></head><body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Wichita Termite Territory Map</h1>
+    <div class="sub">Termite penetration, calling funnel &amp; inspection progress &middot; Evo Pest Kansas &middot; __NZIPS__ zips</div>
+  </div>
+  <button class="themebtn" id="themebtn" type="button">Dark mode</button>
+</header>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="controls">
+  <div class="seg" id="seg" role="group" aria-label="Map view">
+    <button type="button" data-v="status" aria-pressed="true">Campaign status</button>
+    <button type="button" data-v="funnel" aria-pressed="false">Calling progress</button>
+    <button type="button" data-v="pen" aria-pressed="false">Termite penetration</button>
+    <button type="button" data-v="opp" aria-pressed="false">Opportunity ($ ARV)</button>
+    <button type="button" data-v="cust" aria-pressed="false">Active customers</button>
+  </div>
+  <label class="chk"><input type="checkbox" id="labels" checked> Zip labels</label>
+  <label class="chk"><input type="checkbox" id="base"> Street basemap</label>
+</div>
+
+<div class="grid">
+  <div class="mapcard">
+    <div id="map"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <aside class="side" id="side"></aside>
+</div>
+
+<footer id="foot"></footer>
+</div>
+
+<script>__LEAFLET_JS__</script>
+<script>
+const GEO = __DATA__;
+const F = GEO.features;
+const P = F.map(f => f.properties);
+const TARGET = 30;
+
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const money = v => '$' + Math.round(v).toLocaleString();
+const num = v => (v == null ? '—' : v.toLocaleString());
+const pct = v => (v == null ? '—' : v.toFixed(1) + '%');
+
+const STATUS = {
+  complete:       {label:'Complete',        v:'--st-done'},
+  in_progress:    {label:'In progress',     v:'--st-prog'},
+  queued:         {label:'Queued to call',  v:'--st-queued'},
+  paused:         {label:'Paused',          v:'--st-pause'},
+  not_in_campaign:{label:'Not in campaign', v:'--st-none'}
+};
+
+/* ---------- view definitions ---------- */
+const BINS = {
+  funnel:{title:'Leads called', gray:d=>!d.in_campaign,
+          cuts:[0.001, 20, 40, 60, 80],
+          labs:['Not in campaign','0% called','Under 20%','20–40%','40–60%','60–80%','80%+'],
+          get:d=>d.call_rate_pct, fmt:pct},
+  pen:  {title:'Termite penetration',
+         cuts:[0.001, 1, 2, 4, 8],
+         labs:['0% — none','Under 1%','1–2%','2–4%','4–8%','8%+'],
+         get:d=>d.penetration_pct, fmt:pct},
+  opp:  {title:'Opportunity to 30%',
+         cuts:[1, 6000, 12000, 19000, 30000],
+         labs:['At target','Under $6k','$6–12k','$12–19k','$19–30k','$30k+'],
+         get:d=>d.opportunity_arv, fmt:money},
+  cust: {title:'Active customers',
+         cuts:[1, 25, 60, 100, 150],
+         labs:['None','1–25','25–60','60–100','100–150','150+'],
+         get:d=>d.active_customers, fmt:num}
+};
+const SQ = ['--sq1','--sq2','--sq3','--sq4','--sq5','--sq6'];
+
+function binIndex(v, cuts){ let i = 0; while (i < cuts.length && v >= cuts[i]) i++; return i; }
+
+let view = 'status';
+
+function fillFor(d){
+  if (view === 'status') return css(STATUS[d.status].v);
+  const b = BINS[view];
+  if (b.gray && b.gray(d)) return css('--sq0');
+  return css(SQ[binIndex(b.get(d), b.cuts)]);
+}
+
+/* ---------- map ---------- */
+const map = L.map('map', {zoomControl:true, scrollWheelZoom:true, attributionControl:false});
+let baseLayer = null;
+
+const layer = L.geoJSON(GEO, {
+  style: f => ({
+    fillColor: fillFor(f.properties), fillOpacity: 0.88,
+    color: css('--stroke'), weight: 1.2, opacity: 1
+  }),
+  onEachFeature: (f, lyr) => {
+    const d = f.properties;
+    lyr.bindTooltip(tipHTML(d), {className:'zt', sticky:true, direction:'top', offset:[0,-6]});
+    lyr.on({
+      mouseover: e => { e.target.setStyle({weight:3, color:css('--text-primary')}); e.target.bringToFront(); },
+      mouseout:  e => { e.target.setStyle({weight:1.2, color:css('--stroke')}); },
+      click:     () => select(d.zip)
+    });
+  }
+}).addTo(map);
+
+map.fitBounds(layer.getBounds(), {padding:[16,16]});
+
+function tipHTML(d){
+  const s = STATUS[d.status];
+  let h = `<div class="t">${d.zip} &middot; ${d.city}</div>
+    <div class="r">Active customers <b>${num(d.active_customers)}</b></div>
+    <div class="r">Termite plans <b>${num(d.active_termite)}</b> (<b>${pct(d.penetration_pct)}</b>)</div>`;
+  if (d.in_campaign){
+    h += `<div class="r">Leads <b>${num(d.leads)}</b> · called <b>${pct(d.call_rate_pct)}</b></div>
+          <div class="r">Showed up <b>${num(d.showed_up)}</b> · left to call <b>${num(d.left_to_call)}</b></div>`;
+  }
+  h += `<div class="r">Status <b>${s.label}</b></div>`;
+  return h;
+}
+
+/* zip labels — only where the polygon is wide enough on screen to hold one,
+   so the dense Wichita core reveals its labels as you zoom in */
+const labelLayer = L.layerGroup().addTo(map);
+const marks = {};
+layer.eachLayer(l => {
+  const d = l.feature.properties;
+  marks[d.zip] = {
+    bounds: l.getBounds(),
+    marker: L.marker([d.lat, d.lng], {
+      interactive:false,
+      icon: L.divIcon({className:'ziplab', html:d.zip, iconSize:[38,12], iconAnchor:[19,6]})
+    })
+  };
+});
+
+let labelsOn = true;
+function refreshLabels(){
+  labelLayer.clearLayers();
+  if (!labelsOn) return;
+  const shown = [];
+  Object.values(marks)
+    .map(m => {
+      const nw = map.latLngToContainerPoint(m.bounds.getNorthWest());
+      const se = map.latLngToContainerPoint(m.bounds.getSouthEast());
+      return {m, w: se.x - nw.x, h: se.y - nw.y};
+    })
+    .sort((a,b) => (b.w * b.h) - (a.w * a.h))
+    .forEach(({m, w, h}) => {
+      if (w < 46 || h < 20) return;
+      const p = map.latLngToContainerPoint(m.marker.getLatLng());
+      if (shown.some(q => Math.abs(q.x - p.x) < 44 && Math.abs(q.y - p.y) < 15)) return;
+      shown.push(p);
+      labelLayer.addLayer(m.marker);
+    });
+}
+map.on('zoomend moveend', refreshLabels);
+
+let _resizeT = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeT);
+  _resizeT = setTimeout(() => { map.invalidateSize(); refreshLabels(); }, 120);
+});
+
+$('labels').onchange = e => { labelsOn = e.target.checked; refreshLabels(); };
+$('base').onchange = e => {
+  if (e.target.checked){
+    baseLayer = L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      {maxZoom:19, opacity:0.75}).addTo(map);
+    baseLayer.bringToBack();
+    layer.setStyle({fillOpacity:0.62});
+  } else {
+    if (baseLayer) map.removeLayer(baseLayer);
+    baseLayer = null;
+    layer.setStyle({fillOpacity:0.88});
+  }
+};
+
+function repaint(){
+  layer.setStyle(f => ({
+    fillColor: fillFor(f.properties), fillOpacity: baseLayer ? 0.62 : 0.88,
+    color: css('--stroke'), weight:1.2, opacity:1
+  }));
+  drawLegend();
+}
+
+/* ---------- legend ---------- */
+function drawLegend(){
+  let h;
+  if (view === 'status'){
+    h = '<div class="h">Campaign status</div>' +
+      ['complete','in_progress','queued','paused','not_in_campaign'].map(k =>
+        `<div class="row"><span class="sw" style="background:${css(STATUS[k].v)}"></span>${STATUS[k].label}</div>`
+      ).join('');
+  } else {
+    const b = BINS[view];
+    const swatches = b.gray ? ['--sq0'].concat(SQ) : SQ;
+    h = `<div class="h">${b.title}</div>` + b.labs.map((l,i) =>
+      `<div class="row"><span class="sw" style="background:${css(swatches[i])}"></span>${l}</div>`).join('');
+  }
+  $('legend').innerHTML = h;
+}
+
+/* ---------- KPI strip ---------- */
+const T = {
+  active: P.reduce((a,d)=>a+d.active_customers,0),
+  total:  P.reduce((a,d)=>a+d.total_customers,0),
+  term:   P.reduce((a,d)=>a+d.active_termite,0),
+  gap:    P.reduce((a,d)=>a+d.gap_to_target,0),
+  opp:    P.reduce((a,d)=>a+d.opportunity_arv,0),
+  leads:  P.reduce((a,d)=>a+d.leads,0),
+  called: P.reduce((a,d)=>a+d.called,0),
+  showed: P.reduce((a,d)=>a+d.showed_up,0),
+  left:   P.reduce((a,d)=>a+d.left_to_call,0),
+  insp:   P.reduce((a,d)=>a+d.cust_inspected,0)
+};
+T.pen = 100 * T.term / T.active;
+
+$('kpis').innerHTML = [
+  ['Active customers', num(T.active), num(T.total) + ' accounts all-time'],
+  ['Termite plans', num(T.term), 'active preventative coverage'],
+  ['Penetration', T.pen.toFixed(1) + '%', 'goal is 30%'],
+  ['Gap to 30%', num(T.gap), 'more plans needed'],
+  ['Opportunity', money(T.opp), 'ARV at 30% penetration'],
+  ['Left to call', num(T.left), 'of ' + num(T.leads) + ' leads']
+].map(([l,v,n]) => `<div class="kpi"><div class="lab">${l}</div><div class="val">${v}</div><div class="note">${n}</div></div>`).join('');
+
+/* ---------- sidebar ---------- */
+const byZip = Object.fromEntries(P.map(d => [d.zip, d]));
+let selected = null;
+let listMode = 'opp';
+
+const LISTS = {
+  opp: {
+    title:'Biggest opportunity',
+    hint:'Plans still needed to reach 30% penetration, ranked by annual value. Click a zip — on the map or here — for its full profile.',
+    rows:()=>[...P].sort((a,b)=>b.opportunity_arv-a.opportunity_arv).slice(0,10),
+    sub:d=>`${d.active_customers} active · ${pct(d.penetration_pct)} covered · ${STATUS[d.status].label}`,
+    val:d=>money(d.opportunity_arv), small:d=>`${d.gap_to_target} plans`
+  },
+  call: {
+    title:'Call queue',
+    hint:'Leads not yet contacted, biggest queue first. These are the calls standing between you and the next round of inspections.',
+    rows:()=>P.filter(d=>d.left_to_call>0).sort((a,b)=>b.left_to_call-a.left_to_call),
+    sub:d=>`${d.leads} leads · ${pct(d.call_rate_pct)} called · ${d.showed_up} shown`,
+    val:d=>num(d.left_to_call), small:d=>'to call'
+  }
+};
+
+function overview(){
+  const L = LISTS[listMode];
+  const rows = L.rows();
+  $('side').innerHTML = `
+    <div class="tabs">
+      <button type="button" data-l="opp" aria-pressed="${listMode==='opp'}">Opportunity</button>
+      <button type="button" data-l="call" aria-pressed="${listMode==='call'}">Call queue</button>
+    </div>
+    <h2 style="margin-top:14px">${L.title}</h2>
+    <div class="hint" style="margin-top:6px">${L.hint}</div>
+    <ol class="rank">${rows.map((d,i)=>`
+      <li data-z="${d.zip}">
+        <span class="n">${i+1}</span>
+        <span class="b"><span class="a">${d.zip} · ${d.city}</span>
+          <span class="s">${L.sub(d)}</span></span>
+        <span class="v">${L.val(d)}<small>${L.small(d)}</small></span>
+      </li>`).join('')}</ol>`;
+  $('side').querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+    listMode = b.dataset.l; overview();
+  });
+  $('side').querySelectorAll('.rank li').forEach(li => li.onclick = () => select(li.dataset.z));
+}
+
+function detail(z){
+  const d = byZip[z], s = STATUS[d.status];
+  const penW = Math.min(100, d.penetration_pct / 40 * 100);
+
+  let funnelBlock = '';
+  if (d.in_campaign){
+    funnelBlock = `
+      <div class="bar">
+        <div class="lab"><span>Leads called</span><b>${pct(d.call_rate_pct)}</b></div>
+        <div class="track"><div class="fill" style="width:${d.call_rate_pct}%;background:${css(s.v)}"></div></div>
+        <div class="tgtlab">${d.called} of ${d.leads} leads · ${d.left_to_call} left to call</div>
+      </div>
+      <div class="grp">Calling funnel</div>
+      <table class="kv">
+        <tr><td>Total leads</td><td>${num(d.leads)}</td></tr>
+        <tr><td>Scheduled</td><td>${num(d.scheduled)} · ${pct(d.schedule_rate_pct)}</td></tr>
+        <tr><td>Showed up</td><td>${num(d.showed_up)} · ${pct(d.show_rate_pct)}</td></tr>
+        <tr><td>Not interested</td><td>${num(d.not_interested)}</td></tr>
+        <tr><td>Left to call</td><td>${num(d.left_to_call)}</td></tr>
+      </table>`;
+    if (d.showed_up >= 8 && d.close_rate_pct != null && d.close_rate_pct < 15){
+      funnelBlock += `<div class="flag"><b>Inspecting but not closing.</b> ${d.showed_up} inspections
+        shown against ${d.active_termite} active plan${d.active_termite===1?'':'s'} —
+        the appointments are landing, the sale isn't.</div>`;
+    }
+  } else {
+    funnelBlock = `<div class="flag">Not in the calling campaign yet — no leads worked in this zip.</div>`;
+  }
+
+  $('side').innerHTML = `
+    <h2>Zip profile</h2>
+    <div class="zh"><span class="z">${d.zip}</span><span class="c">${d.city}, KS · ${d.county} Co.</span></div>
+    <div class="pill"><span class="d" style="background:${css(s.v)}"></span>${s.label}</div>
+
+    <div class="bar">
+      <div class="lab"><span>Termite penetration</span><b>${pct(d.penetration_pct)}</b></div>
+      <div class="track"><div class="fill" style="width:${penW}%"></div><div class="tgt" style="left:75%"></div></div>
+      <div class="tgtlab">${d.active_termite} of ${d.active_customers} active · marker = 30% goal</div>
+    </div>
+
+    ${funnelBlock}
+
+    <div class="grp">Opportunity</div>
+    <table class="kv">
+      <tr><td>Plans needed for 30%</td><td>${num(d.gap_to_target)}</td></tr>
+      <tr><td>Annual value of that gap</td><td>${money(d.opportunity_arv)}</td></tr>
+      <tr><td>Current termite ARV</td><td>${money(d.termite_arv)}</td></tr>
+    </table>
+
+    <div class="grp">Customer base</div>
+    <table class="kv">
+      <tr><td>Active customers</td><td>${num(d.active_customers)}</td></tr>
+      <tr><td>All-time accounts</td><td>${num(d.total_customers)}</td></tr>
+      <tr><td>Total active ARV</td><td>${money(d.total_arv)}</td></tr>
+      <tr><td>On autopay</td><td>${pct(d.autopay_pct)}</td></tr>
+      <tr><td>Avg tenure</td><td>${d.avg_tenure_yrs == null ? '—' : d.avg_tenure_yrs + ' yrs'}</td></tr>
+      <tr><td>Commercial</td><td>${num(d.active_commercial)}</td></tr>
+    </table>
+
+    <div class="grp">Inspections this year</div>
+    <table class="kv">
+      <tr><td>Customers inspected</td><td>${num(d.cust_inspected)}</td></tr>
+      <tr><td>Customers scheduled</td><td>${num(d.cust_scheduled)}</td></tr>
+      <tr><td>Coverage of active book</td><td>${pct(d.booked_coverage_pct)}</td></tr>
+      <tr><td>Last completed</td><td>${d.last_inspection || '—'}</td></tr>
+    </table>
+
+    <button class="back" type="button" id="back">&larr; Back to lists</button>`;
+  $('back').onclick = () => { selected = null; overview(); repaint(); };
+}
+
+function select(z){
+  selected = z;
+  detail(z);
+  layer.eachLayer(l => {
+    const on = l.feature.properties.zip === z;
+    l.setStyle({weight: on ? 3 : 1.2, color: on ? css('--text-primary') : css('--stroke')});
+    if (on) l.bringToFront();
+  });
+}
+
+/* ---------- controls ---------- */
+$('seg').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  view = b.dataset.v;
+  [...$('seg').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  repaint();
+  if (selected) select(selected);
+};
+
+function applyTheme(dark){
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  $('themebtn').textContent = dark ? 'Light mode' : 'Dark mode';
+  repaint();
+  if (selected) { detail(selected); select(selected); } else overview();
+}
+let dark = matchMedia('(prefers-color-scheme: dark)').matches;
+$('themebtn').onclick = () => { dark = !dark; applyTheme(dark); };
+applyTheme(dark);
+
+$('foot').innerHTML = `Sources: RevHawk / FieldRoutes (Kansas office) for customers, plans and inspections; `
+  + `the team's zip tracking sheet for the calling funnel. Built __STAMP__. `
+  + `Penetration = active termite plans ÷ active customers. `
+  + `Campaign status comes from calling progress: Complete = 80%+ of leads called, `
+  + `In progress = 15%+, Queued = leads loaded but calling not started. `
+  + `Inspection counts cover the current calendar year only. `
+  + `Opportunity ARV values each additional plan at $__ARV__, the average annual recurring value of live termite plans in this market. `
+  + `Boundaries: US Census ZCTA.`;
+
+overview();
+refreshLabels();
+</script></body></html>

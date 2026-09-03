@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evo Pest &middot; Wichita Dialer Route</title>
+<style>__LEAFLET_CSS__</style>
+<style>
+:root{
+  --surface-0:#f4f3f0; --surface-1:#fcfcfb; --surface-2:#eceae5;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#78766f;
+  --border:#d9d7d1; --border-strong:#b8b5ad;
+  --cat-dialer:#184f95; --cat-paused:#c9832e; --cat-remain:#c3c0b8;
+  --route:#a02f68; --route-dot:#a02f68; --stroke:#fcfcfb; --accent:#2a78d6;
+}
+:root[data-theme="dark"]{
+  --surface-0:#111110; --surface-1:#1a1a19; --surface-2:#242422;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8e8d84;
+  --border:#34342f; --border-strong:#4a4a44;
+  --cat-dialer:#5c93d8; --cat-paused:#e0a352; --cat-remain:#3a3a35;
+  --route:#d6478a; --route-dot:#d6478a; --stroke:#1a1a19; --accent:#6da7ec;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --surface-0:#111110; --surface-1:#1a1a19; --surface-2:#242422;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8e8d84;
+    --border:#34342f; --border-strong:#4a4a44;
+    --cat-dialer:#5c93d8; --cat-paused:#e0a352; --cat-remain:#3a3a35;
+    --route:#d6478a; --route-dot:#d6478a; --stroke:#1a1a19; --accent:#6da7ec;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--surface-0);color:var(--text-primary);
+ font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+ -webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+.wrap{width:100%;margin:0;padding:20px 24px 24px;box-sizing:border-box;
+ flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:20px;font-weight:640;letter-spacing:-.01em}
+.sub{color:var(--text-secondary);font-size:13px;margin-top:3px}
+.themebtn{background:var(--surface-1);border:1px solid var(--border);color:var(--text-secondary);
+ border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:520}
+.themebtn:hover{border-color:var(--border-strong);color:var(--text-primary)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:13px 15px}
+.kpi .lab{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);font-weight:600}
+.kpi .val{font-size:25px;font-weight:660;letter-spacing:-.02em;margin-top:5px;font-variant-numeric:tabular-nums}
+.kpi .note{font-size:11.5px;color:var(--text-secondary);margin-top:3px}
+
+.notice{background:var(--surface-1);border:1px solid var(--border-strong);border-left:3px solid var(--cat-paused);
+ border-radius:10px;padding:10px 13px;font-size:12.5px;color:var(--text-secondary);margin-bottom:16px;line-height:1.55}
+.notice b{color:var(--text-primary)}
+
+.grid{display:flex;gap:14px;flex:1 1 auto;min-height:0}
+@media (max-width:940px){.grid{flex-direction:column}}
+
+.mapcard{position:relative;background:var(--surface-1);border:1px solid var(--border);
+ border-radius:14px;overflow:hidden;flex:1 1 auto;min-width:0;display:flex;flex-direction:column;min-height:420px}
+#map{flex:1 1 auto;min-height:0;background:var(--surface-2)}
+@media (max-width:940px){.mapcard{flex:none}#map{height:60vh;min-height:360px}}
+.leaflet-container{background:var(--surface-2);font-family:inherit}
+.leaflet-tooltip.zt{background:var(--surface-1);color:var(--text-primary);border:1px solid var(--border-strong);
+ border-radius:9px;box-shadow:0 6px 20px rgba(0,0,0,.16);padding:9px 11px;font-size:12.5px;white-space:nowrap}
+.leaflet-tooltip.zt::before{display:none}
+.zt .t{font-weight:650;margin-bottom:4px}
+.zt .r{color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.zt .r b{color:var(--text-primary);font-weight:600}
+.stoplab{background:var(--route);color:#fff;border:2px solid var(--stroke);border-radius:50%;
+ width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+ font-size:11px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+
+.legend{position:absolute;left:12px;bottom:12px;background:var(--surface-1);border:1px solid var(--border);
+ border-radius:11px;padding:11px 13px;z-index:800;box-shadow:0 4px 14px rgba(0,0,0,.1);max-width:230px}
+.legend .h{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);
+ font-weight:600;margin-bottom:8px}
+.legend .row{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:12px;color:var(--text-secondary)}
+.legend .sw{width:15px;height:15px;border-radius:4px;border:1px solid var(--border-strong);flex:none}
+.legend .ln{width:15px;height:0;border-top:2.5px dashed var(--route);flex:none}
+
+.side{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:16px;
+ flex:0 0 360px;width:360px;overflow-y:auto;min-height:0}
+@media (max-width:940px){.side{flex:none;width:auto;max-height:55vh}}
+.side h2{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);font-weight:600}
+.side .hint{font-size:11.5px;color:var(--text-muted);margin-top:6px;margin-bottom:2px;line-height:1.5}
+
+.stops{list-style:none;margin-top:12px}
+.stops li{display:flex;align-items:center;gap:11px;padding:8px 6px;border-radius:9px;
+ border-bottom:1px solid var(--border)}
+.stops li:last-child{border-bottom:0}
+.stops .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--route);color:#fff;
+ display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.stops .b{flex:1;min-width:0}
+.stops .b .a{font-size:13px;font-weight:600}
+.stops .b .c{font-size:11.5px;color:var(--text-secondary);margin-top:1px}
+.stops .v{text-align:right;font-size:12px;color:var(--text-secondary);flex:none;font-variant-numeric:tabular-nums}
+.stops .v b{display:block;color:var(--text-primary);font-weight:640;font-size:13px}
+
+footer{margin-top:16px;font-size:11.5px;color:var(--text-muted);line-height:1.6}
+</style></head><body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Wichita Dialer Route</h1>
+    <div class="sub">Zip codes not yet in the calling campaign, ordered to minimize drive time &middot; Evo Pest Kansas</div>
+  </div>
+  <button class="themebtn" id="themeBtn">Dark mode</button>
+</header>
+
+<div class="kpis">
+  <div class="kpi"><div class="lab">Zips remaining</div><div class="val">__NREMAIN__</div><div class="note">not yet loaded to dial</div></div>
+  <div class="kpi"><div class="lab">Route distance</div><div class="val">__TOTALMI__ mi</div><div class="note">centroid-to-centroid, in order</div></div>
+  <div class="kpi"><div class="lab">Avg. leg</div><div class="val">__AVGMI__ mi</div><div class="note">between consecutive stops</div></div>
+  <div class="kpi"><div class="lab">Next up</div><div class="val">__NEXTZIP__</div><div class="note">__NEXTCITY__</div></div>
+</div>
+
+<div class="notice"><b>67217 (Wichita)</b> was pulled from the dialer &mdash; appointments paused, leads held, to be reworked separately. It's excluded from the route below.</div>
+
+<div class="grid">
+  <div class="mapcard">
+    <div id="map"></div>
+    <div class="legend">
+      <div class="h">Zip status</div>
+      <div class="row"><span class="sw" style="background:var(--cat-dialer)"></span>Already in dialer</div>
+      <div class="row"><span class="sw" style="background:var(--cat-paused)"></span>Paused (67217)</div>
+      <div class="row"><span class="sw" style="background:var(--cat-remain)"></span>Not yet added</div>
+      <div class="row"><span class="ln"></span>Proposed route</div>
+    </div>
+  </div>
+  <div class="side">
+    <h2>Add order</h2>
+    <div class="hint">Nearest-neighbor route from the current work area (Andover), 2-opt refined. Numbers match the map.</div>
+    <ol class="stops" id="stopList"></ol>
+  </div>
+</div>
+
+<footer>
+  Route = drive-time proxy, straight-line distance between zip centroids (not turn-by-turn). Sequence starts from
+  67002 Andover, the zip currently being worked, and adds the remaining __NREMAIN__ zips in the order that keeps
+  each next stop closest to the last. Boundaries are US Census ZCTA polygons. Built __STAMP__.
+</footer>
+</div>
+
+<script>__LEAFLET_JS__</script>
+<script>
+const DATA = __DATA__;
+const num = v => v.toLocaleString();
+
+/* ---------- theme ---------- */
+const stored = null;
+let theme = (document.documentElement.getAttribute('data-theme')) ||
+  (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+}
+applyTheme(theme);
+document.getElementById('themeBtn').onclick = () => {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  applyTheme(theme);
+};
+
+/* ---------- map ---------- */
+const map = L.map('map', {zoomControl:true, scrollWheelZoom:true, attributionControl:false});
+
+const catColor = z => {
+  const m = DATA.zips_meta[z];
+  if (!m) return '#999';
+  if (m.category === 'in_dialer') return getComputedStyle(document.documentElement).getPropertyValue('--cat-dialer').trim();
+  if (m.category === 'paused') return getComputedStyle(document.documentElement).getPropertyValue('--cat-paused').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--cat-remain').trim();
+};
+
+const layer = L.geoJSON(DATA.geo, {
+  style: f => ({
+    fillColor: catColor(f.properties.zip),
+    fillOpacity: DATA.zips_meta[f.properties.zip]?.category === 'remaining' ? 0.55 : 0.85,
+    color: getComputedStyle(document.documentElement).getPropertyValue('--stroke').trim(),
+    weight: 1.4
+  }),
+  onEachFeature: (f, lyr) => {
+    const z = f.properties.zip, m = DATA.zips_meta[z];
+    if (!m) return;
+    const rank = DATA.rankByZip[z];
+    lyr.bindTooltip(
+      `<div class="zt"><div class="t">${z} &middot; ${m.city}</div>` +
+      `<div class="r">${num(m.active)} active customers</div>` +
+      `<div class="r">${rank ? 'Stop #' + rank + ' in route' : (m.category === 'paused' ? 'Paused' : 'Already in dialer')}</div></div>`,
+      {className:'zt', sticky:true}
+    );
+  }
+}).addTo(map);
+map.fitBounds(layer.getBounds(), {padding:[16,16]});
+
+const routeLine = L.polyline(DATA.route_line, {
+  color: getComputedStyle(document.documentElement).getPropertyValue('--route').trim(),
+  weight: 2.5, dashArray: '6 5', opacity: 0.9
+}).addTo(map);
+
+DATA.stops.forEach(s => {
+  const meta = DATA.zips_meta[s.zip];
+  const icon = L.divIcon({className:'', html:`<div class="stoplab">${s.rank}</div>`, iconSize:[22,22], iconAnchor:[11,11]});
+  L.marker([DATA.cent[s.zip][0], DATA.cent[s.zip][1]], {icon, zIndexOffset:1000})
+    .bindTooltip(`<div class="zt"><div class="t">Stop ${s.rank} &middot; ${s.zip} ${meta.city}</div>` +
+      `<div class="r">+${s.leg_mi} mi from previous &middot; ${s.cum_mi} mi total</div></div>`, {className:'zt', sticky:true})
+    .addTo(map);
+});
+
+let _resizeT = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeT);
+  _resizeT = setTimeout(() => map.invalidateSize(), 120);
+});
+
+/* ---------- stop list ---------- */
+const list = document.getElementById('stopList');
+list.innerHTML = DATA.stops.map(s => {
+  const m = DATA.zips_meta[s.zip];
+  return `<li><div class="n">${s.rank}</div>
+    <div class="b"><div class="a">${s.zip} &middot; ${m.city}</div><div class="c">${num(m.active)} active customers</div></div>
+    <div class="v"><b>+${s.leg_mi} mi</b>${s.cum_mi} mi total</div></li>`;
+}).join('');
+</script>
+</body></html>

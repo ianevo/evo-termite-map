@@ -1,0 +1,73 @@
+{
+ "67042": {
+  "total_leads": 59,
+  "scheduled": 32,
+  "showed_up": 27,
+  "left_to_call": 11,
+  "not_interested": 16
+ },
+ "67010": {
+  "total_leads": 57,
+  "scheduled": 31,
+  "showed_up": 22,
+  "left_to_call": 16,
+  "not_interested": 10
+ },
+ "67002": {
+  "total_leads": 170,
+  "scheduled": 79,
+  "showed_up": 71,
+  "left_to_call": 68,
+  "not_interested": 23
+ },
+ "67039": {
+  "total_leads": 1,
+  "scheduled": 1,
+  "showed_up": 1,
+  "left_to_call": 0,
+  "not_interested": 0
+ },
+ "67133": {
+  "total_leads": 35,
+  "scheduled": 11,
+  "showed_up": 8,
+  "left_to_call": 15,
+  "not_interested": 9
+ },
+ "67017": {
+  "total_leads": 1,
+  "scheduled": 1,
+  "showed_up": 0,
+  "left_to_call": 0,
+  "not_interested": 0
+ },
+ "67144": {
+  "total_leads": 2,
+  "scheduled": 0,
+  "showed_up": 0,
+  "left_to_call": 1,
+  "not_interested": 1
+ },
+ "67147": {
+  "total_leads": 48,
+  "scheduled": 19,
+  "showed_up": 14,
+  "left_to_call": 27,
+  "not_interested": 2
+ },
+ "67114": {
+  "total_leads": 83,
+  "scheduled": 15,
+  "showed_up": 12,
+  "left_to_call": 67,
+  "not_interested": 1
+ },
+ "67217": {
+  "total_leads": 131,
+  "scheduled": 0,
+  "showed_up": 0,
+  "left_to_call": 131,
+  "not_interested": 0,
+  "paused": true
+ }
+}
