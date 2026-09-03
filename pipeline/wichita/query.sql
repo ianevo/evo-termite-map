@@ -20,7 +20,10 @@ WITH cust AS (
       '67037','67002','67217','67212','67235','67060','67205','67052','67207','67230',
       '67114','67206','67226','67219','67215','67204','67203','67042','67010','67147',
       '67110','67209','67101','67216','67218','67208','67210','67220','67133','67213',
-      '67067','67228','67214','67211','67223','67056','67117','67202')
+      '67067','67228','67214','67211','67223','67056','67117','67202',
+      -- tiny campaign zips (funnel.json only, <5 all-time accounts) -- must stay listed here
+      -- or a refresh silently drops them from the map even though they're still being worked
+      '67017','67039','67144')
 ),
 zip_meta AS (
   SELECT zip, ANY_VALUE(city) AS city, ANY_VALUE(county) AS county FROM (
