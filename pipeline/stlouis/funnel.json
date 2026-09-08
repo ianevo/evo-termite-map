@@ -1,0 +1,44 @@
+{
+ "63385": {
+  "total_leads": 62,
+  "scheduled": 28,
+  "showed_up": 7,
+  "left_to_call": 34,
+  "not_interested": 0
+ },
+ "63368": {
+  "total_leads": 29,
+  "scheduled": 10,
+  "showed_up": 2,
+  "left_to_call": 19,
+  "not_interested": 0
+ },
+ "63005": {
+  "total_leads": 41,
+  "scheduled": 1,
+  "showed_up": 0,
+  "left_to_call": 40,
+  "not_interested": 0
+ },
+ "63367": {
+  "total_leads": 21,
+  "scheduled": 9,
+  "showed_up": 1,
+  "left_to_call": 12,
+  "not_interested": 0
+ },
+ "63304": {
+  "total_leads": 19,
+  "scheduled": 5,
+  "showed_up": 0,
+  "left_to_call": 14,
+  "not_interested": 0
+ },
+ "63341": {
+  "total_leads": 5,
+  "scheduled": 0,
+  "showed_up": 0,
+  "left_to_call": 5,
+  "not_interested": 0
+ }
+}

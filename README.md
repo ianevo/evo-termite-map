@@ -17,22 +17,23 @@ territories:
 
 - **Wichita** (Kansas office) — the mature campaign. Termite plans are selling, the
   calling funnel is loaded from the tracking sheet, and campaign status is meaningful.
-- **St. Louis** (St. Louis office) — pre-launch, zero termite plans sold. No calling
-  campaign loaded either, so every zip reads "not in campaign" / 0% penetration. This is
-  expected, not a bug: the map exists purely to show where the existing customer book is
-  concentrated, so appointment-setting can start with the densest zips first instead of a
-  scattered route.
-- **Little Rock** (Little Rock office) — also pre-launch (no calling campaign loaded
-  yet), but unlike St. Louis this office already has a handful of legacy termite plans
-  (12, scattered) predating any organized push. That's enough local signal for a real
-  average plan value, so its opportunity math is self-computed rather than borrowed. This
-  office covers a much wider area than the other two — Little Rock/North Little Rock,
-  Conway, Cabot, Benton/Bryant, Hot Springs, Searcy, Pine Bluff, Russellville, Heber
-  Springs, and a long tail of small towns around them — because that's the real shape of
-  the office's book, not a tighter single-metro area like Wichita or St. Louis.
+- **St. Louis** (St. Louis office) — termite program pre-launch (zero plans sold yet),
+  but the calling campaign itself has started: a handful of zips have leads loaded and
+  are actively being worked.
+- **Little Rock** (Little Rock office) — also pre-launch, and unlike St. Louis this
+  office already has a handful of legacy termite plans (12, scattered) predating any
+  organized push — enough local signal for a real average plan value, so its opportunity
+  math is self-computed rather than borrowed. Its calling campaign has leads loaded
+  (currently one zip, Hot Springs) but no calls made yet. This office covers a much wider
+  area than the other two — Little Rock/North Little Rock, Conway, Cabot, Benton/Bryant,
+  Hot Springs, Searcy, Pine Bluff, Russellville, Heber Springs, and a long tail of small
+  towns around them — because that's the real shape of the office's book, not a tighter
+  single-metro area like Wichita or St. Louis.
 
-For any pre-launch territory, its "Opportunity" ranking is effectively an
-active-customer-density ranking until real termite/funnel data exists.
+Most zips in every territory still read "not in campaign," since the calling effort is
+loaded a handful of zips at a time. For any zip without leads loaded yet, its
+"Opportunity" ranking is effectively an active-customer-density ranking until real
+termite/funnel data exists there.
 
 Six map views, same for all three territories:
 
@@ -70,9 +71,9 @@ the panel — 8+ inspections shown with under 15% penetration.
   inspection appointments. This is the system of record for what was sold and serviced.
 - **The tracking sheet** — the calling funnel: leads loaded, called, scheduled, showed
   up, not interested, left to call. This is upstream of RevHawk and is the only place
-  that knows which zips are actively being worked. St. Louis and Little Rock have no
-  sheet data yet — their campaign status is entirely "not in campaign" until leads get
-  loaded.
+  that knows which zips are actively being worked. The sheet now tracks all three
+  offices side by side (one merged table per office); a zip with no row there still
+  reads "not in campaign" regardless of territory.
 
 For Wichita, the two reconcile closely: as of September 2, the sheet reported 155 leads
 shown up against RevHawk's 158 customers inspected this year. Campaign status is driven
@@ -119,11 +120,11 @@ refresh by hand instead:
 1. Run `pipeline/<territory>/query.sql` through RevHawk (`run_query`).
 2. Save the returned rows to `pipeline/<territory>/rows.json` (either a bare JSON list
    or the full `{"rows": [...]}` response — both work).
-3. Wichita only: update `pipeline/wichita/funnel.json` from the tracking sheet's per-zip
-   summary table — one entry per zip with `total_leads`, `scheduled`, `showed_up`,
-   `left_to_call`, `not_interested`. Only zips actually in the calling campaign belong
-   here. (St. Louis and Little Rock have no `funnel.json` yet — add one the same way once
-   each campaign starts.)
+3. Update `pipeline/<territory>/funnel.json` from the tracking sheet — it now has one
+   merged table per office (WICHITA / ST. LOUIS / LITTLE ROCK columns side by side, same
+   row shape): one entry per zip with `total_leads`, `scheduled`, `showed_up`,
+   `left_to_call`, `not_interested`, for that office's CRM=TRUE rows only. Preserve any
+   existing `"paused": true` flags — those are manual and never derived from the sheet.
 4. `node pipeline/build.mjs` → regenerates `index.html` for **all three** territories in
    one pass.
 5. Commit and push. GitHub Pages redeploys automatically.
@@ -132,9 +133,11 @@ The build prints headline totals per territory so you can sanity-check each run:
 
 ```
 [wichita] 41 zips — active 2,598 | termite 64 | penetration 2.5% | gap to 30% 737 plans ($369,237) | avg plan ARV $501
-[wichita] funnel: 899 leads | 252 called (28%) | 155 showed up | 647 left to call
+[wichita] funnel: 899 leads | 275 called (31%) | 165 showed up | 624 left to call
 [stlouis] 39 zips — active 863 | termite 0 | penetration 0.0% | gap to 30% 276 plans ($138,276) | avg plan ARV $501
+[stlouis] funnel: 177 leads | 53 called (30%) | 10 showed up | 124 left to call
 [littlerock] 61 zips — active 2,566 | termite 12 | penetration 0.5% | gap to 30% 783 plans ($366,444) | avg plan ARV $468
+[littlerock] funnel: 163 leads | 0 called (0%) | 0 showed up | 163 left to call
 ```
 
 It also warns if a zip has metrics but no boundary polygon, or funnel data with no
@@ -161,11 +164,13 @@ pipeline/
   stlouis/
     query.sql                     RevHawk query, one row per zip
     rows.json                     latest query results
-    boundaries.geojson            ZCTA polygons, geometry only (no funnel.json yet)
+    funnel.json                   calling funnel from the tracking sheet
+    boundaries.geojson            ZCTA polygons, geometry only
   littlerock/
     query.sql                     RevHawk query, one row per zip
     rows.json                     latest query results
-    boundaries.geojson            ZCTA polygons, geometry only (no funnel.json yet)
+    funnel.json                   calling funnel from the tracking sheet
+    boundaries.geojson            ZCTA polygons, geometry only
 routeplan/                        Wichita-only driving-route planner (separate page, unrelated toggle)
 ```
 
@@ -201,9 +206,9 @@ Action — see below for why) that runs daily:
 
 | Task | Time | What it does |
 |---|---|---|
-| `wichita-termite-map-refresh` | 6:10 AM | RevHawk query + reads the tracking sheet (preserving any manual `"paused"` flags) → rebuild → push |
-| `stlouis-termite-map-refresh` | 6:19 AM | RevHawk query only (no campaign sheet yet) → rebuild → push |
-| `littlerock-termite-map-refresh` | 6:28 AM | RevHawk query only (no campaign sheet yet) → rebuild → push |
+| `wichita-termite-map-refresh` | 6:10 AM | RevHawk query + reads its block of the tracking sheet (preserving any manual `"paused"` flags) → rebuild → push |
+| `stlouis-termite-map-refresh` | 6:19 AM | RevHawk query + reads its block of the tracking sheet → rebuild → push |
+| `littlerock-termite-map-refresh` | 6:28 AM | RevHawk query + reads its block of the tracking sheet → rebuild → push |
 
 Staggered ~9 minutes apart, and each does a `git pull --ff-only` before rebuilding so they
 can't clobber each other if a run ever overlaps. Each skips the commit entirely if nothing
