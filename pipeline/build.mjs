@@ -38,16 +38,17 @@ const TERRITORIES = [
     state: 'MO', officeLabel: 'St. Louis office',
     title: 'St. Louis Termite Territory Map',
     subRegion: 'Evo Pest St. Louis',
-    launched: false, // program hasn't sold its first plan yet -- no local ARV/penetration signal
+    // First plans sold as of the calling campaign ramping up -- real local ARV signal now,
+    // so this computes its own average instead of borrowing Wichita's.
+    launched: true,
   },
   {
     id: 'littlerock', dir: 'littlerock', label: 'Little Rock',
     state: 'AR', officeLabel: 'Little Rock office',
     title: 'Little Rock Termite Territory Map',
     subRegion: 'Evo Pest Little Rock',
-    // No organized calling campaign yet (no funnel.json), but unlike St. Louis this office
-    // already has a handful of legacy termite plans (12, scattered) -- enough for a real
-    // local average ARV, so this is treated as "launched" for penetration/opportunity math.
+    // Had a handful of legacy termite plans even before the calling campaign started --
+    // enough for a real local average ARV, so this is treated as "launched" too.
     launched: true,
   },
 ];

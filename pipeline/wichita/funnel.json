@@ -1,38 +1,17 @@
 {
- "67042": {
-  "total_leads": 59,
-  "scheduled": 32,
-  "showed_up": 27,
-  "left_to_call": 11,
-  "not_interested": 16
+ "67002": {
+  "total_leads": 170,
+  "scheduled": 82,
+  "showed_up": 75,
+  "left_to_call": 65,
+  "not_interested": 23
  },
  "67010": {
   "total_leads": 57,
   "scheduled": 32,
-  "showed_up": 23,
+  "showed_up": 24,
   "left_to_call": 15,
   "not_interested": 10
- },
- "67002": {
-  "total_leads": 170,
-  "scheduled": 80,
-  "showed_up": 72,
-  "left_to_call": 67,
-  "not_interested": 23
- },
- "67039": {
-  "total_leads": 1,
-  "scheduled": 1,
-  "showed_up": 1,
-  "left_to_call": 0,
-  "not_interested": 0
- },
- "67133": {
-  "total_leads": 35,
-  "scheduled": 12,
-  "showed_up": 8,
-  "left_to_call": 14,
-  "not_interested": 9
  },
  "67017": {
   "total_leads": 1,
@@ -41,11 +20,46 @@
   "left_to_call": 0,
   "not_interested": 0
  },
+ "67037": {
+  "total_leads": 312,
+  "scheduled": 114,
+  "showed_up": 0,
+  "left_to_call": 190,
+  "not_interested": 8
+ },
+ "67039": {
+  "total_leads": 1,
+  "scheduled": 1,
+  "showed_up": 1,
+  "left_to_call": 0,
+  "not_interested": 0
+ },
+ "67042": {
+  "total_leads": 59,
+  "scheduled": 32,
+  "showed_up": 27,
+  "left_to_call": 11,
+  "not_interested": 16
+ },
+ "67114": {
+  "total_leads": 83,
+  "scheduled": 26,
+  "showed_up": 25,
+  "left_to_call": 56,
+  "not_interested": 1
+ },
+ "67133": {
+  "total_leads": 35,
+  "scheduled": 12,
+  "showed_up": 10,
+  "left_to_call": 14,
+  "not_interested": 9
+ },
  "67144": {
   "total_leads": 2,
-  "scheduled": 0,
-  "showed_up": 0,
-  "left_to_call": 1,
+  "scheduled": 1,
+  "showed_up": 1,
+  "left_to_call": 0,
   "not_interested": 1
  },
  "67147": {
@@ -55,26 +69,12 @@
   "left_to_call": 26,
   "not_interested": 2
  },
- "67114": {
-  "total_leads": 83,
-  "scheduled": 21,
-  "showed_up": 18,
-  "left_to_call": 61,
-  "not_interested": 1
- },
  "67217": {
   "total_leads": 131,
-  "scheduled": 7,
+  "scheduled": 8,
   "showed_up": 0,
-  "left_to_call": 124,
+  "left_to_call": 123,
   "not_interested": 0,
   "paused": true
- },
- "67037": {
-  "total_leads": 312,
-  "scheduled": 7,
-  "showed_up": 0,
-  "left_to_call": 305,
-  "not_interested": 0
  }
 }
